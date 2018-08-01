@@ -23,16 +23,15 @@ import java.util.Set;
 
 import javax.annotation.PostConstruct;
 
-import org.springframework.aop.scope.ScopedProxyUtils;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.config.BeanDefinitionHolder;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -95,7 +94,14 @@ public class RefreshAutoConfiguration {
 
 	@Component
 	protected static class RefreshScopeBeanDefinitionEnhancer
-			implements BeanDefinitionRegistryPostProcessor {
+			implements BeanPostProcessor {
+
+		private final BeanDefinitionRegistry registry;
+
+		public RefreshScopeBeanDefinitionEnhancer(ConfigurableApplicationContext context) {
+			//TODO: if not registry
+			registry = (BeanDefinitionRegistry) context;
+		}
 
 		/**
 		 * Class names for beans to post process into refresh scope. Useful when you don't
@@ -122,25 +128,20 @@ public class RefreshAutoConfiguration {
 		}
 
 		@Override
-		public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
-				throws BeansException {
-		}
-
-		@Override
-		public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
-				throws BeansException {
-			for (String name : registry.getBeanDefinitionNames()) {
-				BeanDefinition definition = registry.getBeanDefinition(name);
-				if (isApplicable(registry, name, definition)) {
-					BeanDefinitionHolder holder = new BeanDefinitionHolder(definition,
-							name);
-					BeanDefinitionHolder proxy = ScopedProxyUtils
-							.createScopedProxy(holder, registry, true);
-					definition.setScope("refresh");
-					registry.registerBeanDefinition(proxy.getBeanName(),
-							proxy.getBeanDefinition());
-				}
+		public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+			BeanDefinition definition = null;
+			try {
+				definition = registry.getBeanDefinition(beanName);
+			} catch (NoSuchBeanDefinitionException e) {
+				// just ignore and move on
+				return bean;
 			}
+			if (isApplicable(registry, beanName, definition)) {
+				definition.setScope("refresh");
+				ProxyFactory proxyFactory = new ProxyFactory(bean);
+				return proxyFactory.getProxy();
+			}
+			return bean;
 		}
 
 		private boolean isApplicable(BeanDefinitionRegistry registry, String name,
