@@ -111,8 +111,6 @@ public class RefreshAutoConfiguration {
 		private Set<String> refreshables = new HashSet<>(
 				Arrays.asList("com.zaxxer.hikari.HikariDataSource"));
 
-		private Environment environment;
-
 		public Set<String> getRefreshable() {
 			return this.refreshables;
 		}
@@ -129,21 +127,29 @@ public class RefreshAutoConfiguration {
 		}
 
 		@Override
-		public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-
+		public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
+				throws BeansException {
+			Environment environment = beanFactory.getBean(Environment.class);
+			if (environment == null) {
+				environment = new StandardEnvironment();
+			}
+			Binder.get(environment).bind(REFRESH_SCOPE_PREFIX, Bindable.ofInstance(this));
 		}
 
 		@Override
-		public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
+		public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
+				throws BeansException {
 			this.registry = registry;
 		}
 
 		@Override
-		public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+		public Object postProcessAfterInitialization(Object bean, String beanName)
+				throws BeansException {
 			BeanDefinition definition = null;
 			try {
 				definition = registry.getBeanDefinition(beanName);
-			} catch (NoSuchBeanDefinitionException e) {
+			}
+			catch (NoSuchBeanDefinitionException e) {
 				// just ignore and move on
 				return bean;
 			}
@@ -170,15 +176,6 @@ public class RefreshAutoConfiguration {
 				}
 			}
 			if (type != null) {
-				if (this.environment == null && registry instanceof BeanFactory) {
-					this.environment = ((BeanFactory) registry)
-							.getBean(Environment.class);
-				}
-				if (this.environment == null) {
-					this.environment = new StandardEnvironment();
-				}
-				Binder.get(environment).bind(REFRESH_SCOPE_PREFIX,
-						Bindable.ofInstance(this));
 				return this.refreshables.contains(type);
 			}
 			return false;
