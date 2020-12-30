@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2016 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,18 +30,18 @@ import org.springframework.http.client.AsyncClientHttpRequestInterceptor;
 import org.springframework.web.client.AsyncRestTemplate;
 
 /**
- * Auto configuration for Ribbon (client side load balancing).
+ * Auto-configuration for blocking client-side load balancing.
  *
  * @author Rob Worsnop
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @ConditionalOnBean(LoadBalancerClient.class)
 @ConditionalOnClass(AsyncRestTemplate.class)
 public class AsyncLoadBalancerAutoConfiguration {
 
-
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class AsyncRestTemplateCustomizerConfig {
+
 		@LoadBalanced
 		@Autowired(required = false)
 		private List<AsyncRestTemplate> restTemplates = Collections.emptyList();
@@ -49,21 +49,20 @@ public class AsyncLoadBalancerAutoConfiguration {
 		@Bean
 		public SmartInitializingSingleton loadBalancedAsyncRestTemplateInitializer(
 				final List<AsyncRestTemplateCustomizer> customizers) {
-			return new SmartInitializingSingleton() {
-				@Override
-				public void afterSingletonsInstantiated() {
-					for (AsyncRestTemplate restTemplate : AsyncRestTemplateCustomizerConfig.this.restTemplates) {
-						for (AsyncRestTemplateCustomizer customizer : customizers) {
-							customizer.customize(restTemplate);
-						}
+			return () -> {
+				for (AsyncRestTemplate restTemplate : AsyncRestTemplateCustomizerConfig.this.restTemplates) {
+					for (AsyncRestTemplateCustomizer customizer : customizers) {
+						customizer.customize(restTemplate);
 					}
 				}
 			};
 		}
+
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class LoadBalancerInterceptorConfig {
+
 		@Bean
 		public AsyncLoadBalancerInterceptor asyncLoadBalancerInterceptor(LoadBalancerClient loadBalancerClient) {
 			return new AsyncLoadBalancerInterceptor(loadBalancerClient);
@@ -72,15 +71,13 @@ public class AsyncLoadBalancerAutoConfiguration {
 		@Bean
 		public AsyncRestTemplateCustomizer asyncRestTemplateCustomizer(
 				final AsyncLoadBalancerInterceptor loadBalancerInterceptor) {
-			return new AsyncRestTemplateCustomizer() {
-				@Override
-				public void customize(AsyncRestTemplate restTemplate) {
-					List<AsyncClientHttpRequestInterceptor> list = new ArrayList<>(
-							restTemplate.getInterceptors());
-					list.add(loadBalancerInterceptor);
-					restTemplate.setInterceptors(list);
-				}
+			return restTemplate -> {
+				List<AsyncClientHttpRequestInterceptor> list = new ArrayList<>(restTemplate.getInterceptors());
+				list.add(loadBalancerInterceptor);
+				restTemplate.setInterceptors(list);
 			};
 		}
+
 	}
+
 }

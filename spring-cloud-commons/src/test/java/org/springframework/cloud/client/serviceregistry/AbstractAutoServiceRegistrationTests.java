@@ -1,3 +1,19 @@
+/*
+ * Copyright 2012-2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.springframework.cloud.client.serviceregistry;
 
 import java.net.URI;
@@ -6,33 +22,41 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.autoconfigure.web.server.LocalManagementPort;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.cloud.client.discovery.event.InstancePreRegisteredEvent;
+import org.springframework.cloud.client.discovery.event.InstanceRegisteredEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 /**
  * @author Spencer Gibb
+ * @author Tim Ysewyn
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = AbstractAutoServiceRegistrationTests.Config.class,
-		properties = "management.port=0", webEnvironment = RANDOM_PORT)
+// @checkstyle:off
+@SpringBootTest(classes = AbstractAutoServiceRegistrationTests.Config.class, properties = "management.port=0",
+		webEnvironment = RANDOM_PORT)
+// @checkstyle:on
 public class AbstractAutoServiceRegistrationTests {
 
 	@Autowired
+	public PostEventListener postEventListener;
+
+	@Autowired
 	private TestAutoServiceRegistration autoRegistration;
+
+	@Autowired
+	private PreEventListener preEventListener;
 
 	@LocalServerPort
 	private int port;
@@ -42,26 +66,82 @@ public class AbstractAutoServiceRegistrationTests {
 
 	@Test
 	public void portsWork() {
-		assertNotEquals("Lifecycle port is zero", 0, autoRegistration.getPort().get());
-		assertNotEquals("Lifecycle port is management port", managementPort, autoRegistration.getPort().get());
-		assertEquals("Lifecycle port is wrong", port, autoRegistration.getPort().get());
-		assertTrue("Lifecycle not running", autoRegistration.isRunning());
-		assertThat("ServiceRegistry is wrong type", autoRegistration.getServiceRegistry(), is(instanceOf(TestServiceRegistry.class)));
-		TestServiceRegistry serviceRegistry = (TestServiceRegistry) autoRegistration.getServiceRegistry();
-		assertTrue("Lifecycle not registered", serviceRegistry.isRegistered());
-		assertEquals("Lifecycle appName is wrong", "application", autoRegistration.getAppName());
+		then(this.autoRegistration.getPort().get()).isNotEqualTo(0).as("Lifecycle port is zero");
+		then(this.managementPort).isNotEqualTo(this.autoRegistration.getPort().get())
+				.as("Lifecycle port is management port");
+		then(this.port).isEqualTo(this.autoRegistration.getPort().get()).as("Lifecycle port is wrong");
+		then(this.autoRegistration.isRunning()).isTrue().as("Lifecycle not running");
+		then(this.autoRegistration.getServiceRegistry()).isInstanceOf(TestServiceRegistry.class)
+				.as("ServiceRegistry is wrong type");
+		TestServiceRegistry serviceRegistry = (TestServiceRegistry) this.autoRegistration.getServiceRegistry();
+		then(serviceRegistry.isRegistered()).isTrue().as("Lifecycle not registered");
+		then(this.autoRegistration.getAppName()).as("Lifecycle appName is wrong").isEqualTo("application");
+	}
+
+	@Test
+	public void eventsFireTest() {
+		then(this.preEventListener.wasFired).isTrue();
+		then(this.preEventListener.registration.getServiceId()).isEqualTo("testRegistration2");
+		then(this.postEventListener.wasFired).isTrue();
+		then(this.postEventListener.config.getServiceId()).isEqualTo("testRegistration2");
 	}
 
 	@EnableAutoConfiguration
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	public static class Config {
+
 		@Bean
 		public TestAutoServiceRegistration testAutoServiceRegistration() {
 			return new TestAutoServiceRegistration();
 		}
+
+		@Bean
+		public PreEventListener preRegisterListener() {
+			return new PreEventListener();
+		}
+
+		@Bean
+		public PostEventListener postEventListener() {
+			return new PostEventListener();
+		}
+
+	}
+
+	public static class PreEventListener implements ApplicationListener<InstancePreRegisteredEvent> {
+
+		public boolean wasFired = false;
+
+		public Registration registration;
+
+		@Override
+		public void onApplicationEvent(InstancePreRegisteredEvent event) {
+			this.registration = event.getRegistration();
+			this.wasFired = true;
+		}
+
+	}
+
+	public static class PostEventListener implements ApplicationListener<InstanceRegisteredEvent> {
+
+		public boolean wasFired = false;
+
+		public Registration config;
+
+		@Override
+		public void onApplicationEvent(InstanceRegisteredEvent event) {
+			this.config = (Registration) event.getConfig();
+			this.wasFired = true;
+		}
+
 	}
 
 	public static class TestRegistration implements Registration {
+
+		@Override
+		public String getInstanceId() {
+			return "testRegistrationInstance2";
+		}
+
 		@Override
 		public String getServiceId() {
 			return "testRegistration2";
@@ -91,17 +171,22 @@ public class AbstractAutoServiceRegistrationTests {
 		public Map<String, String> getMetadata() {
 			return null;
 		}
+
 	}
 
 	public static class TestMgmtRegistration extends TestRegistration {
+
 		@Override
 		public String getServiceId() {
 			return "testMgmtRegistration2";
 		}
+
 	}
 
 	public static class TestServiceRegistry implements ServiceRegistry<TestRegistration> {
+
 		private boolean registered = false;
+
 		private boolean deregistered = false;
 
 		@Override
@@ -125,33 +210,40 @@ public class AbstractAutoServiceRegistrationTests {
 		}
 
 		@Override
-		public void close() { }
+		public void close() {
+		}
 
 		@Override
 		public void setStatus(TestRegistration registration, String status) {
-			//TODO: test setStatus
+			// TODO: test setStatus
 		}
 
 		@Override
 		public Object getStatus(TestRegistration registration) {
-			//TODO: test getStatus
+			// TODO: test getStatus
 			return null;
 		}
 
 		boolean isRegistered() {
-			return registered;
+			return this.registered;
 		}
 
 		boolean isDeregistered() {
-			return deregistered;
+			return this.deregistered;
 		}
+
 	}
 
 	public static class TestAutoServiceRegistration extends AbstractAutoServiceRegistration<TestRegistration> {
+
 		private int port = 0;
 
 		public TestAutoServiceRegistration(AutoServiceRegistrationProperties properties) {
 			super(null, properties);
+		}
+
+		protected TestAutoServiceRegistration() {
+			super(new TestServiceRegistry());
 		}
 
 		@Override
@@ -164,12 +256,8 @@ public class AbstractAutoServiceRegistrationTests {
 			return super.getAppName();
 		}
 
-		protected TestAutoServiceRegistration() {
-			super(new TestServiceRegistry());
-		}
-
 		protected int getConfiguredPort() {
-			return port;
+			return this.port;
 		}
 
 		protected void setConfiguredPort(int port) {
@@ -188,7 +276,7 @@ public class AbstractAutoServiceRegistrationTests {
 
 		@Override
 		protected Object getConfiguration() {
-			return null;
+			return getRegistration();
 		}
 
 		@Override
@@ -196,6 +284,6 @@ public class AbstractAutoServiceRegistrationTests {
 			return true;
 		}
 
-
 	}
+
 }

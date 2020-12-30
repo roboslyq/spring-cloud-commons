@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2016 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,27 +45,31 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.env.CompositePropertySource;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.StandardEnvironment;
-import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
+
+import static org.springframework.core.env.StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME;
 
 /**
  * @author Dave Syer
  *
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PropertySourceBootstrapProperties.class)
-public class PropertySourceBootstrapConfiguration implements
-		ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered {
+public class PropertySourceBootstrapConfiguration
+		implements ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered {
 
+	/**
+	 * Bootstrap property source name.
+	 */
 	public static final String BOOTSTRAP_PROPERTY_SOURCE_NAME = BootstrapApplicationListener.BOOTSTRAP_PROPERTY_SOURCE_NAME
 			+ "Properties";
 
-	private static Log logger = LogFactory
-			.getLog(PropertySourceBootstrapConfiguration.class);
+	private static Log logger = LogFactory.getLog(PropertySourceBootstrapConfiguration.class);
 
 	private int order = Ordered.HIGHEST_PRECEDENCE + 10;
 
@@ -77,34 +81,43 @@ public class PropertySourceBootstrapConfiguration implements
 		return this.order;
 	}
 
-	public void setPropertySourceLocators(
-			Collection<PropertySourceLocator> propertySourceLocators) {
+	public void setPropertySourceLocators(Collection<PropertySourceLocator> propertySourceLocators) {
 		this.propertySourceLocators = new ArrayList<>(propertySourceLocators);
 	}
 
 	@Override
 	public void initialize(ConfigurableApplicationContext applicationContext) {
-		CompositePropertySource composite = new CompositePropertySource(
-				BOOTSTRAP_PROPERTY_SOURCE_NAME);
+		List<PropertySource<?>> composite = new ArrayList<>();
 		AnnotationAwareOrderComparator.sort(this.propertySourceLocators);
 		boolean empty = true;
 		ConfigurableEnvironment environment = applicationContext.getEnvironment();
 		for (PropertySourceLocator locator : this.propertySourceLocators) {
-			PropertySource<?> source = null;
-			source = locator.locate(environment);
-			if (source == null) {
+			Collection<PropertySource<?>> source = locator.locateCollection(environment);
+			if (source == null || source.size() == 0) {
 				continue;
 			}
-			logger.info("Located property source: " + source);
-			composite.addPropertySource(source);
+			List<PropertySource<?>> sourceList = new ArrayList<>();
+			for (PropertySource<?> p : source) {
+				if (p instanceof EnumerablePropertySource) {
+					EnumerablePropertySource<?> enumerable = (EnumerablePropertySource<?>) p;
+					sourceList.add(new BootstrapPropertySource<>(enumerable));
+				}
+				else {
+					sourceList.add(new SimpleBootstrapPropertySource(p));
+				}
+			}
+			logger.info("Located property source: " + sourceList);
+			composite.addAll(sourceList);
 			empty = false;
 		}
 		if (!empty) {
 			MutablePropertySources propertySources = environment.getPropertySources();
 			String logConfig = environment.resolvePlaceholders("${logging.config:}");
 			LogFile logFile = LogFile.get(environment);
-			if (propertySources.contains(BOOTSTRAP_PROPERTY_SOURCE_NAME)) {
-				propertySources.remove(BOOTSTRAP_PROPERTY_SOURCE_NAME);
+			for (PropertySource<?> p : environment.getPropertySources()) {
+				if (p.getName().startsWith(BOOTSTRAP_PROPERTY_SOURCE_NAME)) {
+					propertySources.remove(p.getName());
+				}
 			}
 			insertPropertySources(propertySources, composite);
 			reinitializeLoggingSystem(environment, logConfig, logFile);
@@ -113,73 +126,78 @@ public class PropertySourceBootstrapConfiguration implements
 		}
 	}
 
-	private void reinitializeLoggingSystem(ConfigurableEnvironment environment,
-			String oldLogConfig, LogFile oldLogFile) {
-		Map<String, Object> props = Binder.get(environment)
-				.bind("logging", Bindable.mapOf(String.class, Object.class)).orElseGet(Collections::emptyMap);
+	private void reinitializeLoggingSystem(ConfigurableEnvironment environment, String oldLogConfig,
+			LogFile oldLogFile) {
+		Map<String, Object> props = Binder.get(environment).bind("logging", Bindable.mapOf(String.class, Object.class))
+				.orElseGet(Collections::emptyMap);
 		if (!props.isEmpty()) {
 			String logConfig = environment.resolvePlaceholders("${logging.config:}");
 			LogFile logFile = LogFile.get(environment);
-			LoggingSystem system = LoggingSystem
-					.get(LoggingSystem.class.getClassLoader());
+			LoggingSystem system = LoggingSystem.get(LoggingSystem.class.getClassLoader());
 			try {
-				ResourceUtils.getURL(logConfig).openStream().close();
 				// Three step initialization that accounts for the clean up of the logging
 				// context before initialization. Spring Boot doesn't initialize a logging
 				// system that hasn't had this sequence applied (since 1.4.1).
 				system.cleanUp();
 				system.beforeInitialize();
-				system.initialize(new LoggingInitializationContext(environment),
-						logConfig, logFile);
+				system.initialize(new LoggingInitializationContext(environment), logConfig, logFile);
 			}
 			catch (Exception ex) {
-				PropertySourceBootstrapConfiguration.logger
-						.warn("Logging config file location '" + logConfig
-								+ "' cannot be opened and will be ignored");
+				PropertySourceBootstrapConfiguration.logger.warn("Error opening logging config file " + logConfig, ex);
 			}
 		}
 	}
 
-	private void setLogLevels(ConfigurableApplicationContext applicationContext,
-			ConfigurableEnvironment environment) {
+	private void setLogLevels(ConfigurableApplicationContext applicationContext, ConfigurableEnvironment environment) {
 		LoggingRebinder rebinder = new LoggingRebinder();
 		rebinder.setEnvironment(environment);
 		// We can't fire the event in the ApplicationContext here (too early), but we can
 		// create our own listener and poke it (it doesn't need the key changes)
-		rebinder.onApplicationEvent(new EnvironmentChangeEvent(applicationContext,
-				Collections.<String>emptySet()));
+		rebinder.onApplicationEvent(new EnvironmentChangeEvent(applicationContext, Collections.<String>emptySet()));
 	}
 
-	private void insertPropertySources(MutablePropertySources propertySources,
-			CompositePropertySource composite) {
+	private void insertPropertySources(MutablePropertySources propertySources, List<PropertySource<?>> composite) {
 		MutablePropertySources incoming = new MutablePropertySources();
-		incoming.addFirst(composite);
+		List<PropertySource<?>> reversedComposite = new ArrayList<>(composite);
+		// Reverse the list so that when we call addFirst below we are maintaining the
+		// same order of PropertySources
+		// Wherever we call addLast we can use the order in the List since the first item
+		// will end up before the rest
+		Collections.reverse(reversedComposite);
+		for (PropertySource<?> p : reversedComposite) {
+			incoming.addFirst(p);
+		}
 		PropertySourceBootstrapProperties remoteProperties = new PropertySourceBootstrapProperties();
 		Binder.get(environment(incoming)).bind("spring.cloud.config", Bindable.ofInstance(remoteProperties));
-		if (!remoteProperties.isAllowOverride() || (!remoteProperties.isOverrideNone()
-				&& remoteProperties.isOverrideSystemProperties())) {
-			propertySources.addFirst(composite);
+		if (!remoteProperties.isAllowOverride()
+				|| (!remoteProperties.isOverrideNone() && remoteProperties.isOverrideSystemProperties())) {
+			for (PropertySource<?> p : reversedComposite) {
+				propertySources.addFirst(p);
+			}
 			return;
 		}
 		if (remoteProperties.isOverrideNone()) {
-			propertySources.addLast(composite);
+			for (PropertySource<?> p : composite) {
+				propertySources.addLast(p);
+			}
 			return;
 		}
-		if (propertySources
-				.contains(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME)) {
+		if (propertySources.contains(SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME)) {
 			if (!remoteProperties.isOverrideSystemProperties()) {
-				propertySources.addAfter(
-						StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
-						composite);
+				for (PropertySource<?> p : reversedComposite) {
+					propertySources.addAfter(SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, p);
+				}
 			}
 			else {
-				propertySources.addBefore(
-						StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
-						composite);
+				for (PropertySource<?> p : composite) {
+					propertySources.addBefore(SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, p);
+				}
 			}
 		}
 		else {
-			propertySources.addLast(composite);
+			for (PropertySource<?> p : composite) {
+				propertySources.addLast(p);
+			}
 		}
 	}
 
@@ -211,12 +229,10 @@ public class PropertySourceBootstrapConfiguration implements
 		for (String profile : includeProfiles) {
 			activeProfiles.add(0, profile);
 		}
-		environment.setActiveProfiles(
-				activeProfiles.toArray(new String[activeProfiles.size()]));
+		environment.setActiveProfiles(activeProfiles.toArray(new String[activeProfiles.size()]));
 	}
 
-	private Set<String> addIncludedProfilesTo(Set<String> profiles,
-			PropertySource<?> propertySource) {
+	private Set<String> addIncludedProfilesTo(Set<String> profiles, PropertySource<?> propertySource) {
 		if (propertySource instanceof CompositePropertySource) {
 			for (PropertySource<?> nestedPropertySource : ((CompositePropertySource) propertySource)
 					.getPropertySources()) {
@@ -224,15 +240,15 @@ public class PropertySourceBootstrapConfiguration implements
 			}
 		}
 		else {
-			Collections.addAll(profiles, getProfilesForValue(propertySource.getProperty(
-					ConfigFileApplicationListener.INCLUDE_PROFILES_PROPERTY)));
+			Collections.addAll(profiles, getProfilesForValue(
+					propertySource.getProperty(ConfigFileApplicationListener.INCLUDE_PROFILES_PROPERTY)));
 		}
 		return profiles;
 	}
 
 	private String[] getProfilesForValue(Object property) {
 		final String value = (property == null ? null : property.toString());
-		return StringUtils.commaDelimitedListToStringArray(value);
+		return property == null ? new String[0] : StringUtils.tokenizeToStringArray(value, ",");
 	}
 
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,8 +18,7 @@ package org.springframework.cloud.client.discovery.event;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.BDDAssertions.then;
 
 /**
  * @author Dave Syer
@@ -30,25 +29,25 @@ public class HeartbeatMonitorTests {
 
 	@Test
 	public void onAndOff() {
-		assertTrue(this.monitor.update("foo"));
-		assertFalse(this.monitor.update("foo"));
+		then(this.monitor.update("foo")).isTrue();
+		then(this.monitor.update("foo")).isFalse();
 	}
 
 	@Test
 	public void toggle() {
-		assertTrue(this.monitor.update("foo"));
-		assertTrue(this.monitor.update("bar"));
+		then(this.monitor.update("foo")).isTrue();
+		then(this.monitor.update("bar")).isTrue();
 	}
 
 	@Test
 	public void nullInitialValue() {
-		assertFalse(this.monitor.update(null));
+		then(this.monitor.update(null)).isFalse();
 	}
 
 	@Test
 	public void nullSecondValue() {
-		assertTrue(this.monitor.update("foo"));
-		assertFalse(this.monitor.update(null));
+		then(this.monitor.update("foo")).isTrue();
+		then(this.monitor.update(null)).isFalse();
 	}
 
 }

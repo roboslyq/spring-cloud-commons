@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,7 @@ import org.springframework.cloud.context.scope.refresh.RefreshScope;
 
 /**
  * Health indicator for the refresh scope and configuration properties rebinding. If an
- * environment change causes a bean to fail in instantiate or bind this indicator will
+ * environment change causes a bean to fail in instantiate or bind, this indicator will
  * generally say what the problem was and switch to DOWN.
  *
  * @author Dave Syer
@@ -35,10 +35,10 @@ import org.springframework.cloud.context.scope.refresh.RefreshScope;
 public class RefreshScopeHealthIndicator extends AbstractHealthIndicator {
 
 	private ObjectProvider<RefreshScope> scope;
+
 	private ConfigurationPropertiesRebinder rebinder;
 
-	public RefreshScopeHealthIndicator(ObjectProvider<RefreshScope> scope,
-									   ConfigurationPropertiesRebinder rebinder) {
+	public RefreshScopeHealthIndicator(ObjectProvider<RefreshScope> scope, ConfigurationPropertiesRebinder rebinder) {
 		this.scope = scope;
 		this.rebinder = rebinder;
 	}

@@ -1,11 +1,11 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,7 @@ import org.junit.Test;
 
 import org.springframework.cloud.commons.util.InetUtils.HostInfo;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.BDDAssertions.then;
 
 /**
  * @author Dave Syer
@@ -37,21 +35,21 @@ public class InetUtilsTests {
 	@Test
 	public void testGetFirstNonLoopbackHostInfo() {
 		try (InetUtils utils = new InetUtils(new InetUtilsProperties())) {
-			assertNotNull(utils.findFirstNonLoopbackHostInfo());
+			then(utils.findFirstNonLoopbackHostInfo()).isNotNull();
 		}
 	}
 
 	@Test
 	public void testGetFirstNonLoopbackAddress() {
 		try (InetUtils utils = new InetUtils(new InetUtilsProperties())) {
-			assertNotNull(utils.findFirstNonLoopbackAddress());
+			then(utils.findFirstNonLoopbackAddress()).isNotNull();
 		}
 	}
 
 	@Test
 	public void testConvert() throws Exception {
 		try (InetUtils utils = new InetUtils(new InetUtilsProperties())) {
-			assertNotNull(utils.convertAddress(InetAddress.getByName("localhost")));
+			then(utils.convertAddress(InetAddress.getByName("localhost"))).isNotNull();
 		}
 	}
 
@@ -59,7 +57,7 @@ public class InetUtilsTests {
 	public void testHostInfo() {
 		try (InetUtils utils = new InetUtils(new InetUtilsProperties())) {
 			HostInfo info = utils.findFirstNonLoopbackHostInfo();
-			assertNotNull(info.getIpAddressAsInt());
+			then(info.getIpAddressAsInt()).isNotNull();
 		}
 	}
 
@@ -73,17 +71,16 @@ public class InetUtilsTests {
 		properties.setIgnoredInterfaces(Arrays.asList("docker0", "veth.*"));
 		try (InetUtils inetUtils = new InetUtils(properties)) {
 
-			assertTrue("docker0 not ignored", inetUtils.ignoreInterface("docker0"));
-			assertTrue("vethAQI2QT0 not ignored",
-					inetUtils.ignoreInterface("vethAQI2QT"));
-			assertFalse("docker1 ignored", inetUtils.ignoreInterface("docker1"));
+			then(inetUtils.ignoreInterface("docker0")).isTrue().as("docker0 not ignored");
+			then(inetUtils.ignoreInterface("vethAQI2QT")).as("vethAQI2QT0 not ignored").isTrue();
+			then(inetUtils.ignoreInterface("docker1")).as("docker1 ignored").isFalse();
 		}
 	}
 
 	@Test
 	public void testDefaultIgnoreInterface() {
 		try (InetUtils inetUtils = new InetUtils(new InetUtilsProperties())) {
-			assertFalse("docker0 ignored", inetUtils.ignoreInterface("docker0"));
+			then(inetUtils.ignoreInterface("docker0")).as("docker0 ignored").isFalse();
 		}
 	}
 
@@ -93,34 +90,34 @@ public class InetUtilsTests {
 		properties.setUseOnlySiteLocalInterfaces(true);
 
 		try (InetUtils utils = new InetUtils(properties)) {
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1")));
-			assertFalse(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1")));
+			then(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1"))).isFalse();
 		}
 	}
-	
+
 	@Test
 	public void testPreferredNetworksRegex() throws Exception {
 		InetUtilsProperties properties = new InetUtilsProperties();
 		properties.setPreferredNetworks(Arrays.asList("192.168.*", "10.0.*"));
 
 		try (InetUtils utils = new InetUtils(properties)) {
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1")));
-			assertFalse(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1")));
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("10.0.10.1")));
-			assertFalse(utils.isPreferredAddress(InetAddress.getByName("10.255.10.1")));
+			then(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1"))).isFalse();
+			then(utils.isPreferredAddress(InetAddress.getByName("10.0.10.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("10.255.10.1"))).isFalse();
 		}
 	}
-	
+
 	@Test
 	public void testPreferredNetworksSimple() throws Exception {
 		InetUtilsProperties properties = new InetUtilsProperties();
 		properties.setPreferredNetworks(Arrays.asList("192", "10.0"));
 
 		try (InetUtils utils = new InetUtils(properties)) {
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1")));
-			assertFalse(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1")));
-			assertFalse(utils.isPreferredAddress(InetAddress.getByName("10.255.10.1")));
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("10.0.10.1")));
+			then(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1"))).isFalse();
+			then(utils.isPreferredAddress(InetAddress.getByName("10.255.10.1"))).isFalse();
+			then(utils.isPreferredAddress(InetAddress.getByName("10.0.10.1"))).isTrue();
 		}
 	}
 
@@ -129,10 +126,11 @@ public class InetUtilsTests {
 		InetUtilsProperties properties = new InetUtilsProperties();
 		properties.setPreferredNetworks(Collections.emptyList());
 		try (InetUtils utils = new InetUtils(properties)) {
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1")));
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1")));
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("10.255.10.1")));
-			assertTrue(utils.isPreferredAddress(InetAddress.getByName("10.0.10.1")));
+			then(utils.isPreferredAddress(InetAddress.getByName("192.168.0.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("5.5.8.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("10.255.10.1"))).isTrue();
+			then(utils.isPreferredAddress(InetAddress.getByName("10.0.10.1"))).isTrue();
 		}
 	}
+
 }

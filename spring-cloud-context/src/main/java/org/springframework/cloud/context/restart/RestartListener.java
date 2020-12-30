@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,8 +24,8 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.SmartApplicationListener;
 
 /**
- * A listener that stores enough information about an application as it starts, to be able
- * to restart it later if needed.
+ * A listener that stores enough information about an application, as it starts, to be
+ * able to restart it later if needed.
  *
  * @author Dave Syer
  *
@@ -63,8 +63,7 @@ public class RestartListener implements SmartApplicationListener {
 			}
 		}
 		else if (input instanceof ContextRefreshedEvent) {
-			if (this.context != null && input.getSource().equals(this.context)
-					&& this.event != null) {
+			if (this.context != null && input.getSource().equals(this.context) && this.event != null) {
 				this.context.publishEvent(this.event);
 			}
 		}

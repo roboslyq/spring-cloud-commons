@@ -1,11 +1,11 @@
 /*
- * Copyright 2006-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.cloud.context.properties;
 
-import static org.junit.Assert.assertEquals;
+package org.springframework.cloud.context.properties;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +23,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
@@ -41,9 +41,10 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import static org.assertj.core.api.BDDAssertions.then;
+
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = TestConfiguration.class,
-		properties = { "messages.expiry.one=168", "messages.expiry.two=76" })
+@SpringBootTest(classes = TestConfiguration.class, properties = { "messages.expiry.one=168", "messages.expiry.two=76" })
 public class ConfigurationPropertiesRebinderProxyIntegrationTests {
 
 	@Autowired
@@ -60,13 +61,13 @@ public class ConfigurationPropertiesRebinderProxyIntegrationTests {
 	public void testAppendProperties() throws Exception {
 		// This comes out as a String not Integer if the rebinder processes the proxy
 		// instead of the target
-		assertEquals(new Integer(168), this.properties.getExpiry().get("one"));
+		then(this.properties.getExpiry().get("one")).isEqualTo(new Integer(168));
 		TestPropertyValues.of("messages.expiry.one=56").applyTo(this.environment);
 		this.rebinder.rebind();
-		assertEquals(new Integer(56), this.properties.getExpiry().get("one"));
+		then(this.properties.getExpiry().get("one")).isEqualTo(new Integer(56));
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties
 	@Import({ Interceptor.class, RefreshConfiguration.RebinderConfiguration.class,
 			PropertyPlaceholderAutoConfiguration.class, AopAutoConfiguration.class })
@@ -81,39 +82,43 @@ public class ConfigurationPropertiesRebinderProxyIntegrationTests {
 
 	@Aspect
 	protected static class Interceptor {
+
 		@Before("execution(* *..TestProperties.*(..))")
 		public void before() {
 			System.err.println("Before");
 		}
+
 	}
 
 	// Hack out a protected inner class for testing
 	protected static class RefreshConfiguration extends RefreshAutoConfiguration {
-		@Configuration
-		protected static class RebinderConfiguration
-				extends ConfigurationPropertiesRebinderAutoConfiguration {
+
+		@Configuration(proxyBeanMethods = false)
+		protected static class RebinderConfiguration extends ConfigurationPropertiesRebinderAutoConfiguration {
 
 		}
+
 	}
 
 	@ConfigurationProperties("messages")
 	protected static class TestProperties {
-		private String name;
 
 		private final Map<String, Integer> expiry = new HashMap<>();
 
+		private String name;
+
 		public Map<String, Integer> getExpiry() {
-			return expiry;
+			return this.expiry;
 		}
 
 		public String getName() {
-			return name;
+			return this.name;
 		}
 
 		public void setName(String name) {
 			this.name = name;
 		}
+
 	}
 
 }
-

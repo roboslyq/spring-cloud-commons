@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,22 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.bootstrap.encrypt;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.io.Resource;
 
-@ConfigurationProperties("encrypt")
+/**
+ * Key encryption properties.
+ *
+ * @author Dave Syer
+ */
+@ConfigurationProperties(KeyProperties.PREFIX)
 public class KeyProperties {
 
 	/**
-	 * A symmetric key. As a stronger alternative consider using a keystore.
+	 * ConfigurationProperties prefix for KeyProperties.
+	 */
+	public static final String PREFIX = "encrypt";
+
+	/**
+	 * A symmetric key. As a stronger alternative, consider using a keystore.
 	 */
 	private String key;
 
 	/**
-	 * A salt for the symmetric key in the form of a hex-encoded byte array. As a stronger
-	 * alternative consider using a keystore.
+	 * A salt for the symmetric key, in the form of a hex-encoded byte array. As a
+	 * stronger alternative, consider using a keystore.
 	 */
 	private String salt = "deadbeef";
 
@@ -61,7 +72,7 @@ public class KeyProperties {
 	}
 
 	public String getSalt() {
-		return salt;
+		return this.salt;
 	}
 
 	public void setSalt(String salt) {
@@ -76,6 +87,9 @@ public class KeyProperties {
 		this.keyStore = keyStore;
 	}
 
+	/**
+	 * Key store properties.
+	 */
 	public static class KeyStore {
 
 		/**
@@ -98,6 +112,11 @@ public class KeyProperties {
 		 */
 		private String secret;
 
+		/**
+		 * The KeyStore type. Defaults to jks.
+		 */
+		private String type = "jks";
+
 		public String getAlias() {
 			return this.alias;
 		}
@@ -118,6 +137,10 @@ public class KeyProperties {
 			return this.password;
 		}
 
+		public String getType() {
+			return type;
+		}
+
 		public void setPassword(String password) {
 			this.password = password;
 		}
@@ -130,5 +153,10 @@ public class KeyProperties {
 			this.secret = secret;
 		}
 
+		public void setType(String type) {
+			this.type = type;
+		}
+
 	}
+
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.context.scope.refresh;
 
 import java.net.URI;
@@ -22,6 +23,7 @@ import java.util.Map;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
@@ -41,7 +43,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 /**
@@ -49,11 +51,13 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  *
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = ClientApp.class, properties = "management.endpoints.web.exposure.include=*", webEnvironment = RANDOM_PORT)
+@SpringBootTest(classes = ClientApp.class,
+		properties = { "management.endpoints.web.exposure.include=*", "management.endpoint.env.post.enabled=true" },
+		webEnvironment = RANDOM_PORT)
 public class RefreshEndpointIntegrationTests {
-	
+
 	private static final String BASE_PATH = new WebEndpointProperties().getBasePath();
-	
+
 	@LocalServerPort
 	private int port;
 
@@ -61,38 +65,36 @@ public class RefreshEndpointIntegrationTests {
 	public void webAccess() throws Exception {
 		TestRestTemplate template = new TestRestTemplate();
 		template.exchange(
-				getUrlEncodedEntity("http://localhost:" + this.port + BASE_PATH + "/env", "message",
-						"Hello Dave!"), String.class);
-		template.postForObject("http://localhost:" + this.port + BASE_PATH + "/refresh", null, String.class);
-		String message = template.getForObject("http://localhost:" + this.port + "/",
+				getUrlEncodedEntity("http://localhost:" + this.port + BASE_PATH + "/env", "message", "Hello Dave!"),
 				String.class);
-		assertEquals("Hello Dave!", message);
+		template.postForObject("http://localhost:" + this.port + BASE_PATH + "/refresh", null, String.class);
+		String message = template.getForObject("http://localhost:" + this.port + "/", String.class);
+		then(message).isEqualTo("Hello Dave!");
 	}
 
-	private RequestEntity<?> getUrlEncodedEntity(String uri, String key, String value)
-			throws URISyntaxException {
+	private RequestEntity<?> getUrlEncodedEntity(String uri, String key, String value) throws URISyntaxException {
 		Map<String, String> property = new HashMap<>();
 		property.put("name", key);
 		property.put("value", value);
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
-		RequestEntity<Map<String, String>> entity = new RequestEntity<>(
-				property, headers, HttpMethod.POST, new URI(uri));
+		RequestEntity<Map<String, String>> entity = new RequestEntity<>(property, headers, HttpMethod.POST,
+				new URI(uri));
 		return entity;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableAutoConfiguration
 	protected static class ClientApp {
+
+		public static void main(String[] args) {
+			SpringApplication.run(ClientApp.class, args);
+		}
 
 		@Bean
 		@RefreshScope
 		public Controller controller() {
 			return new Controller();
-		}
-
-		public static void main(String[] args) {
-			SpringApplication.run(ClientApp.class, args);
 		}
 
 	}
@@ -101,7 +103,7 @@ public class RefreshEndpointIntegrationTests {
 	protected static class Controller {
 
 		String message;
-		
+
 		@Value("${message:Hello World!}")
 		public void setMessage(String message) {
 			this.message = message;
@@ -113,6 +115,5 @@ public class RefreshEndpointIntegrationTests {
 		}
 
 	}
-
 
 }

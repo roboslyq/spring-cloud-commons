@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.context.properties;
 
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.cloud.context.environment.EnvironmentChangeEvent;
+import org.springframework.cloud.util.ProxyUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
@@ -33,17 +35,16 @@ import org.springframework.jmx.export.annotation.ManagedAttribute;
 import org.springframework.jmx.export.annotation.ManagedOperation;
 import org.springframework.jmx.export.annotation.ManagedResource;
 import org.springframework.stereotype.Component;
-import org.springframework.cloud.util.ProxyUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * Listens for {@link EnvironmentChangeEvent} and rebinds beans that were bound to the
  * {@link Environment} using {@link ConfigurationProperties
  * <code>@ConfigurationProperties</code>}. When these beans are re-bound and
- * re-initialized the changes are available immediately to any component that is using the
- * <code>@ConfigurationProperties</code> bean.
+ * re-initialized, the changes are available immediately to any component that is using
+ * the <code>@ConfigurationProperties</code> bean.
  *
- * @see RefreshScope for a deeper and optionally more focused refresh of bean components
- *
+ * @see RefreshScope for a deeper and optionally more focused refresh of bean components.
  * @author Dave Syer
  *
  */
@@ -63,15 +64,13 @@ public class ConfigurationPropertiesRebinder
 	}
 
 	@Override
-	public void setApplicationContext(ApplicationContext applicationContext)
-			throws BeansException {
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
 	}
 
 	/**
 	 * A map of bean name to errors when instantiating the bean.
-	 *
-	 * @return the errors accumulated since the latest destroy
+	 * @return The errors accumulated since the latest destroy.
 	 */
 	public Map<String, Exception> getErrors() {
 		return this.errors;
@@ -97,9 +96,13 @@ public class ConfigurationPropertiesRebinder
 					bean = ProxyUtils.getTargetObject(bean);
 				}
 				if (bean != null) {
+					// TODO: determine a more general approach to fix this.
+					// see https://github.com/spring-cloud/spring-cloud-commons/issues/571
+					if (getNeverRefreshable().contains(bean.getClass().getName())) {
+						return false; // ignore
+					}
 					this.applicationContext.getAutowireCapableBeanFactory().destroyBean(bean);
-                    this.applicationContext.getAutowireCapableBeanFactory()
-                            .initializeBean(bean, name);
+					this.applicationContext.getAutowireCapableBeanFactory().initializeBean(bean, name);
 					return true;
 				}
 			}
@@ -116,8 +119,15 @@ public class ConfigurationPropertiesRebinder
 	}
 
 	@ManagedAttribute
+	public Set<String> getNeverRefreshable() {
+		String neverRefresh = this.applicationContext.getEnvironment()
+				.getProperty("spring.cloud.refresh.never-refreshable", "com.zaxxer.hikari.HikariDataSource");
+		return StringUtils.commaDelimitedListToSet(neverRefresh);
+	}
+
+	@ManagedAttribute
 	public Set<String> getBeanNames() {
-		return new HashSet<String>(this.beans.getBeanNames());
+		return new HashSet<>(this.beans.getBeanNames());
 	}
 
 	@Override

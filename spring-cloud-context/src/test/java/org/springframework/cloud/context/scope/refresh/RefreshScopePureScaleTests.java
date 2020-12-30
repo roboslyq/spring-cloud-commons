@@ -1,11 +1,11 @@
 /*
- * Copyright 2006-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.cloud.context.scope.refresh;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+package org.springframework.cloud.context.scope.refresh;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,17 +46,20 @@ import org.springframework.test.annotation.Repeat;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.ObjectUtils;
 
+import static org.assertj.core.api.BDDAssertions.then;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = TestConfiguration.class)
-// , properties="logging.level.org.springframework.cloud.context.scope.refresh.RefreshScopePureScaleTests=DEBUG")
+// ,
+// properties="logging.level.org.springframework.cloud.context.scope.refresh.RefreshScopePureScaleTests=DEBUG")
 public class RefreshScopePureScaleTests {
 
 	private static Log logger = LogFactory.getLog(RefreshScopePureScaleTests.class);
 
-	private ExecutorService executor = Executors.newFixedThreadPool(8);
-
 	@Autowired
 	org.springframework.cloud.context.scope.refresh.RefreshScope scope;
+
+	private ExecutorService executor = Executors.newFixedThreadPool(8);
 
 	@Autowired
 	private ExampleService service;
@@ -91,27 +93,28 @@ public class RefreshScopePureScaleTests {
 				public void run() {
 					logger.debug("Refreshing.");
 					RefreshScopePureScaleTests.this.scope.refreshAll();
-				}});
+				}
+			});
 		}
-		assertTrue(latch.await(15000, TimeUnit.MILLISECONDS));
-		assertEquals("Foo", this.service.getMessage());
+		then(latch.await(15000, TimeUnit.MILLISECONDS)).isTrue();
+		then(this.service.getMessage()).isEqualTo("Foo");
 		for (Future<String> result : results) {
-			assertEquals("Foo", result.get());
+			then(result.get()).isEqualTo("Foo");
 		}
 	}
 
-	public static interface Service {
+	public interface Service {
 
 		String getMessage();
 
 	}
 
-	public static class ExampleService
-			implements Service, InitializingBean, DisposableBean {
+	public static class ExampleService implements Service, InitializingBean, DisposableBean {
 
 		private static Log logger = LogFactory.getLog(ExampleService.class);
 
 		private String message = null;
+
 		private volatile long delay = 0;
 
 		public void setDelay(long delay) {
@@ -136,22 +139,21 @@ public class RefreshScopePureScaleTests {
 			this.message = null;
 		}
 
-		public void setMessage(String message) {
-			logger.debug("Setting message: " + ObjectUtils.getIdentityHexString(this) + ", " + message);
-			this.message = message;
-		}
-
 		@Override
 		public String getMessage() {
 			logger.debug("Returning message: " + ObjectUtils.getIdentityHexString(this) + ", " + this.message);
 			return this.message;
 		}
 
+		public void setMessage(String message) {
+			logger.debug("Setting message: " + ObjectUtils.getIdentityHexString(this) + ", " + message);
+			this.message = message;
+		}
+
 	}
 
-	@Configuration
-	@Import({ RefreshAutoConfiguration.class,
-			PropertyPlaceholderAutoConfiguration.class })
+	@Configuration(proxyBeanMethods = false)
+	@Import({ RefreshAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class })
 	protected static class TestConfiguration {
 
 		@Bean

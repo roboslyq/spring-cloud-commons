@@ -1,11 +1,11 @@
 /*
- * Copyright 2006-2018 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,16 +43,16 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.BDDAssertions.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = TestConfiguration.class, properties = "management.endpoints.web.exposure.include=*")
+@SpringBootTest(classes = TestConfiguration.class,
+		properties = { "management.endpoints.web.exposure.include=*", "management.endpoint.env.post.enabled=true" })
 @AutoConfigureMockMvc
 public class EnvironmentManagerIntegrationTests {
 
@@ -72,15 +72,12 @@ public class EnvironmentManagerIntegrationTests {
 
 	@Test
 	public void testRefresh() throws Exception {
-		assertEquals("Hello scope!", properties.getMessage());
+		then(this.properties.getMessage()).isEqualTo("Hello scope!");
 		String content = property("message", "Foo");
 
-		this.mvc.perform(post(BASE_PATH + "/env")
-				.content(content)
-				.contentType(MediaType.APPLICATION_JSON))
-				.andExpect(status().isOk())
-				.andExpect(content().string("{\"message\":\"Foo\"}"));
-		assertEquals("Foo", properties.getMessage());
+		this.mvc.perform(post(BASE_PATH + "/env").content(content).contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk()).andExpect(content().string("{\"message\":\"Foo\"}"));
+		then(this.properties.getMessage()).isEqualTo("Foo");
 	}
 
 	private String property(String name, String value) throws JsonProcessingException {
@@ -89,47 +86,42 @@ public class EnvironmentManagerIntegrationTests {
 		property.put("name", name);
 		property.put("value", value);
 
-		return mapper.writeValueAsString(property);
+		return this.mapper.writeValueAsString(property);
 	}
 
 	@Test
 	public void testRefreshFails() throws Exception {
 		try {
-			this.mvc.perform(post(BASE_PATH + "/env")
-					.content(property("delay", "foo"))
-					.contentType(MediaType.APPLICATION_JSON))
-					.andExpect(status().isOk())
-					.andExpect(status().is5xxServerError());
+			this.mvc.perform(
+					post(BASE_PATH + "/env").content(property("delay", "foo")).contentType(MediaType.APPLICATION_JSON))
+					.andExpect(status().isOk()).andExpect(status().is5xxServerError());
 			fail("expected ServletException");
 		}
 		catch (ServletException e) {
 			// The underlying BindException is not handled by the dispatcher servlet
 		}
-		assertEquals(0, properties.getDelay());
+		then(this.properties.getDelay()).isEqualTo(0);
 	}
 
 	@Test
 	public void coreWebExtensionAvailable() throws Exception {
-		this.mvc.perform(get(BASE_PATH + "/env/" + UUID.randomUUID().toString()))
-				.andExpect(status().isNotFound());
+		this.mvc.perform(get(BASE_PATH + "/env/" + UUID.randomUUID().toString())).andExpect(status().isNotFound());
 	}
 
 	@Test
 	public void environmentBeansConfiguredCorrectly() {
 		Map<String, EnvironmentEndpoint> envbeans = this.context.getBeansOfType(EnvironmentEndpoint.class);
-		assertThat(envbeans).hasSize(1)
-				.containsKey("environmentEndpoint");
-		assertThat(envbeans.get("environmentEndpoint"))
-				.isInstanceOf(WritableEnvironmentEndpoint.class);
+		then(envbeans).hasSize(1).containsKey("writableEnvironmentEndpoint");
+		then(envbeans.get("writableEnvironmentEndpoint")).isInstanceOf(WritableEnvironmentEndpoint.class);
 
-		Map<String, EnvironmentEndpointWebExtension> extbeans = this.context.getBeansOfType(EnvironmentEndpointWebExtension.class);
-		assertThat(extbeans).hasSize(1)
-				.containsKey("environmentEndpointWebExtension");
-		assertThat(extbeans.get("environmentEndpointWebExtension"))
+		Map<String, EnvironmentEndpointWebExtension> extbeans = this.context
+				.getBeansOfType(EnvironmentEndpointWebExtension.class);
+		then(extbeans).hasSize(1).containsKey("writableEnvironmentEndpointWebExtension");
+		then(extbeans.get("writableEnvironmentEndpointWebExtension"))
 				.isInstanceOf(WritableEnvironmentEndpointWebExtension.class);
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableAutoConfiguration
 	protected static class TestConfiguration {
 
@@ -148,7 +140,7 @@ public class EnvironmentManagerIntegrationTests {
 		private int delay;
 
 		public String getMessage() {
-			return message;
+			return this.message;
 		}
 
 		public void setMessage(String message) {
@@ -156,12 +148,13 @@ public class EnvironmentManagerIntegrationTests {
 		}
 
 		public int getDelay() {
-			return delay;
+			return this.delay;
 		}
 
 		public void setDelay(int delay) {
 			this.delay = delay;
 		}
+
 	}
 
 }

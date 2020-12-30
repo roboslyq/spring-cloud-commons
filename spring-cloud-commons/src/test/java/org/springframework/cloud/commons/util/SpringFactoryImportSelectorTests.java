@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ package org.springframework.cloud.commons.util;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.BDDAssertions.then;
 
 /**
  * @author Spencer Gibb
@@ -28,15 +28,14 @@ public class SpringFactoryImportSelectorTests {
 	@Test
 	public void testFindAnnotation() {
 		MyAnnotationImportSelector selector = new MyAnnotationImportSelector();
-		assertEquals("annotationClass was wrong", MyAnnotation.class,
-				selector.getAnnotationClass());
+		then(selector.getAnnotationClass()).as("annotationClass was wrong").isEqualTo(MyAnnotation.class);
 	}
 
 	public @interface MyAnnotation {
+
 	}
 
-	public static class MyAnnotationImportSelector extends
-			SpringFactoryImportSelector<MyAnnotation> {
+	public static class MyAnnotationImportSelector extends SpringFactoryImportSelector<MyAnnotation> {
 
 		@Override
 		protected boolean isEnabled() {
@@ -44,4 +43,5 @@ public class SpringFactoryImportSelectorTests {
 		}
 
 	}
+
 }

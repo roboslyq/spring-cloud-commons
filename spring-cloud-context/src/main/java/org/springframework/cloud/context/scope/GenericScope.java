@@ -1,14 +1,17 @@
 /*
- * Copyright 2002-2009 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.springframework.cloud.context.scope;
@@ -64,19 +67,20 @@ import org.springframework.util.StringUtils;
  * </p>
  *
  * @author Dave Syer
- *
  * @since 3.1
  *
  */
-public class GenericScope implements Scope, BeanFactoryPostProcessor,
-		BeanDefinitionRegistryPostProcessor, DisposableBean {
+public class GenericScope
+		implements Scope, BeanFactoryPostProcessor, BeanDefinitionRegistryPostProcessor, DisposableBean {
+
+	/**
+	 * Prefix for the scoped target.
+	 */
+	public static final String SCOPED_TARGET_PREFIX = "scopedTarget.";
 
 	private static final Log logger = LogFactory.getLog(GenericScope.class);
 
-	public static final String SCOPED_TARGET_PREFIX = "scopedTarget.";
-
-	private BeanLifecycleWrapperCache cache = new BeanLifecycleWrapperCache(
-			new StandardScopeCache());
+	private BeanLifecycleWrapperCache cache = new BeanLifecycleWrapperCache(new StandardScopeCache());
 
 	private String name = "generic";
 
@@ -90,29 +94,28 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 
 	private ConcurrentMap<String, ReadWriteLock> locks = new ConcurrentHashMap<>();
 
+	static RuntimeException wrapIfNecessary(Throwable throwable) {
+		if (throwable instanceof RuntimeException) {
+			return (RuntimeException) throwable;
+		}
+		if (throwable instanceof Error) {
+			throw (Error) throwable;
+		}
+		return new IllegalStateException(throwable);
+	}
+
 	/**
-	 * Manual override for the serialization id that will be used to identify the bean
+	 * Manual override for the serialization ID that will be used to identify the bean
 	 * factory. The default is a unique key based on the bean names in the bean factory.
-	 *
-	 * @param id the id to set
+	 * @param id The ID to set.
 	 */
 	public void setId(String id) {
 		this.id = id;
 	}
 
 	/**
-	 * The name of this scope. Default "generic".
-	 *
-	 * @param name the name value to set
-	 */
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	/**
 	 * The cache implementation to use for bean instances in this scope.
-	 *
-	 * @param cache the cache to use
+	 * @param cache The cache to use.
 	 */
 	public void setScopeCache(ScopeCache cache) {
 		this.cache = new BeanLifecycleWrapperCache(cache);
@@ -120,8 +123,7 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 
 	/**
 	 * A map of bean name to errors when instantiating the bean.
-	 *
-	 * @return the errors accumulated since the latest destroy
+	 * @return The errors accumulated since the latest destroy.
 	 */
 	public Map<String, Exception> getErrors() {
 		return this.errors;
@@ -133,7 +135,7 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 		Collection<BeanLifecycleWrapper> wrappers = this.cache.clear();
 		for (BeanLifecycleWrapper wrapper : wrappers) {
 			try {
-				Lock lock = locks.get(wrapper.getName()).writeLock();
+				Lock lock = this.locks.get(wrapper.getName()).writeLock();
 				lock.lock();
 				try {
 					wrapper.destroy();
@@ -153,15 +155,14 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 	}
 
 	/**
-	 * Destroy the named bean (i.e. flush it from the cache by default).
-	 *
-	 * @param name the bean name to flush
-	 * @return true if the bean was already cached, false otherwise
+	 * Destroys the named bean (i.e. flushes it from the cache by default).
+	 * @param name The bean name to flush.
+	 * @return True if the bean was already cached; false otherwise.
 	 */
 	protected boolean destroy(String name) {
 		BeanLifecycleWrapper wrapper = this.cache.remove(name);
 		if (wrapper != null) {
-			Lock lock = locks.get(wrapper.getName()).writeLock();
+			Lock lock = this.locks.get(wrapper.getName()).writeLock();
 			lock.lock();
 			try {
 				wrapper.destroy();
@@ -177,9 +178,8 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 
 	@Override
 	public Object get(String name, ObjectFactory<?> objectFactory) {
-		BeanLifecycleWrapper value = this.cache.put(name,
-				new BeanLifecycleWrapper(name, objectFactory));
-		locks.putIfAbsent(name, new ReentrantReadWriteLock());
+		BeanLifecycleWrapper value = this.cache.put(name, new BeanLifecycleWrapper(name, objectFactory));
+		this.locks.putIfAbsent(name, new ReentrantReadWriteLock());
 		try {
 			return value.getBean();
 		}
@@ -228,8 +228,7 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 				return parser.parseExpression(input);
 			}
 			catch (ParseException e) {
-				throw new IllegalArgumentException("Cannot parse expression: " + input,
-						e);
+				throw new IllegalArgumentException("Cannot parse expression: " + input, e);
 			}
 
 		}
@@ -239,24 +238,21 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 	}
 
 	@Override
-	public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
-			throws BeansException {
+	public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
 		beanFactory.registerScope(this.name, this);
 		setSerializationId(beanFactory);
 	}
 
 	@Override
-	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
-			throws BeansException {
+	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
 		for (String name : registry.getBeanDefinitionNames()) {
 			BeanDefinition definition = registry.getBeanDefinition(name);
 			if (definition instanceof RootBeanDefinition) {
 				RootBeanDefinition root = (RootBeanDefinition) definition;
 				if (root.getDecoratedDefinition() != null && root.hasBeanClass()
 						&& root.getBeanClass() == ScopedProxyFactoryBean.class) {
-					if (getName().equals(root.getDecoratedDefinition().getBeanDefinition()
-							.getScope())) {
+					if (getName().equals(root.getDecoratedDefinition().getBeanDefinition().getScope())) {
 						root.setBeanClass(LockedScopedProxyFactoryBean.class);
 						root.getConstructorArgumentValues().addGenericArgumentValue(this);
 						// surprising that a scoped proxy bean definition is not already
@@ -269,13 +265,12 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 	}
 
 	/**
-	 * If the bean factory is a DefaultListableBeanFactory then it can serialize scoped
+	 * If the bean factory is a DefaultListableBeanFactory, then it can serialize scoped
 	 * beans and deserialize them in another context (even in another JVM), as long as the
-	 * ids of the bean factories match. This method sets up the serialization id to be
-	 * either the id provided to the scope instance, or if that is null, a hash of all the
+	 * IDs of the bean factories match. This method sets up the serialization ID to be
+	 * either the ID provided to the scope instance, or if that is null, a hash of all the
 	 * bean names.
-	 *
-	 * @param beanFactory the bean factory to configure
+	 * @param beanFactory The bean factory to configure.
 	 */
 	private void setSerializationId(ConfigurableListableBeanFactory beanFactory) {
 
@@ -283,8 +278,7 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 
 			String id = this.id;
 			if (id == null) {
-				List<String> list = new ArrayList<>(
-						Arrays.asList(beanFactory.getBeanDefinitionNames()));
+				List<String> list = new ArrayList<>(Arrays.asList(beanFactory.getBeanDefinitionNames()));
 				Collections.sort(list);
 				String names = list.toString();
 				logger.debug("Generating bean factory id from names: " + names);
@@ -297,35 +291,32 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 		}
 		else {
 			logger.warn(
-					"BeanFactory was not a DefaultListableBeanFactory, scoped proxy beans "
-							+ "cannot be serialized.");
+					"BeanFactory was not a DefaultListableBeanFactory, scoped proxy beans " + "cannot be serialized.");
 		}
 
-	}
-
-	static RuntimeException wrapIfNecessary(Throwable throwable) {
-		if (throwable instanceof RuntimeException) {
-			return (RuntimeException) throwable;
-		}
-		if (throwable instanceof Error) {
-			throw (Error) throwable;
-		}
-		return new IllegalStateException(throwable);
 	}
 
 	protected String getName() {
 		return this.name;
 	}
 
+	/**
+	 * The name of this scope. Default "generic".
+	 * @param name The name value to set.
+	 */
+	public void setName(String name) {
+		this.name = name;
+	}
+
 	protected ReadWriteLock getLock(String beanName) {
-		return locks.get(beanName);
+		return this.locks.get(beanName);
 	}
 
 	private static class BeanLifecycleWrapperCache {
 
 		private final ScopeCache cache;
 
-		public BeanLifecycleWrapperCache(ScopeCache cache) {
+		BeanLifecycleWrapperCache(ScopeCache cache) {
 			this.cache = cache;
 		}
 
@@ -362,15 +353,15 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 	 */
 	private static class BeanLifecycleWrapper {
 
-		private Object bean;
-
-		private Runnable callback;
-
 		private final String name;
 
 		private final ObjectFactory<?> objectFactory;
 
-		public BeanLifecycleWrapper(String name, ObjectFactory<?> objectFactory) {
+		private volatile Object bean;
+
+		private Runnable callback;
+
+		BeanLifecycleWrapper(String name, ObjectFactory<?> objectFactory) {
 			this.name = name;
 			this.objectFactory = objectFactory;
 		}
@@ -441,11 +432,17 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 
 	}
 
+	/**
+	 * A factory bean with a locked scope.
+	 *
+	 * @param <S> - a generic scope extension
+	 */
 	@SuppressWarnings("serial")
-	public static class LockedScopedProxyFactoryBean<S extends GenericScope>
-			extends ScopedProxyFactoryBean implements MethodInterceptor {
+	public static class LockedScopedProxyFactoryBean<S extends GenericScope> extends ScopedProxyFactoryBean
+			implements MethodInterceptor {
 
 		private final S scope;
+
 		private String targetBeanName;
 
 		public LockedScopedProxyFactoryBean(S scope) {
@@ -472,12 +469,11 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 		public Object invoke(MethodInvocation invocation) throws Throwable {
 			Method method = invocation.getMethod();
 			if (AopUtils.isEqualsMethod(method) || AopUtils.isToStringMethod(method)
-					|| AopUtils.isHashCodeMethod(method)
-					|| isScopedObjectGetTargetObject(method)) {
+					|| AopUtils.isHashCodeMethod(method) || isScopedObjectGetTargetObject(method)) {
 				return invocation.proceed();
 			}
 			Object proxy = getObject();
-			ReadWriteLock readWriteLock = scope.getLock(this.targetBeanName);
+			ReadWriteLock readWriteLock = this.scope.getLock(this.targetBeanName);
 			if (readWriteLock == null) {
 				if (logger.isDebugEnabled()) {
 					logger.debug("For bean with name [" + this.targetBeanName
@@ -491,13 +487,13 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 				if (proxy instanceof Advised) {
 					Advised advised = (Advised) proxy;
 					ReflectionUtils.makeAccessible(method);
-					return ReflectionUtils.invokeMethod(method,
-							advised.getTargetSource().getTarget(),
+					return ReflectionUtils.invokeMethod(method, advised.getTargetSource().getTarget(),
 							invocation.getArguments());
 				}
 				return invocation.proceed();
 			}
-			// see gh-349. Throw the original exception rather than the UndeclaredThrowableException
+			// see gh-349. Throw the original exception rather than the
+			// UndeclaredThrowableException
 			catch (UndeclaredThrowableException e) {
 				throw e.getUndeclaredThrowable();
 			}
@@ -507,10 +503,10 @@ public class GenericScope implements Scope, BeanFactoryPostProcessor,
 		}
 
 		private boolean isScopedObjectGetTargetObject(Method method) {
-			return method.getDeclaringClass().equals(ScopedObject.class)
-					&& method.getName().equals("getTargetObject")
+			return method.getDeclaringClass().equals(ScopedObject.class) && method.getName().equals("getTargetObject")
 					&& method.getParameterTypes().length == 0;
 		}
+
 	}
 
 }

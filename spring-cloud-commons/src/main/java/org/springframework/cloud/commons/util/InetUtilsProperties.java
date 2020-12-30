@@ -1,11 +1,11 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,10 +24,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
+ * Properties for {@link InetUtils}.
+ *
  * @author Spencer Gibb
  */
 @ConfigurationProperties(InetUtilsProperties.PREFIX)
 public class InetUtilsProperties {
+
+	/**
+	 * Prefix for the Inet Utils properties.
+	 */
 	public static final String PREFIX = "spring.cloud.inetutils";
 
 	/**
@@ -36,28 +42,29 @@ public class InetUtilsProperties {
 	private String defaultHostname = "localhost";
 
 	/**
-	 * The default ipaddress. Used in case of errors.
+	 * The default IP address. Used in case of errors.
 	 */
 	private String defaultIpAddress = "127.0.0.1";
 
 	/**
-	 * Timeout in seconds for calculating hostname.
+	 * Timeout, in seconds, for calculating hostname.
 	 */
 	@Value("${spring.util.timeout.sec:${SPRING_UTIL_TIMEOUT_SEC:1}}")
 	private int timeoutSeconds = 1;
 
 	/**
-	 * List of Java regex expressions for network interfaces that will be ignored.
+	 * List of Java regular expressions for network interfaces that will be ignored.
 	 */
 	private List<String> ignoredInterfaces = new ArrayList<>();
-	
+
 	/**
-	 * Use only interfaces with site local addresses. See {@link InetAddress#isSiteLocalAddress()} for more details.
+	 * Whether to use only interfaces with site local addresses. See
+	 * {@link InetAddress#isSiteLocalAddress()} for more details.
 	 */
 	private boolean useOnlySiteLocalInterfaces = false;
-	
+
 	/**
-	 * List of Java regex expressions for network addresses that will be preferred.
+	 * List of Java regular expressions for network addresses that will be preferred.
 	 */
 	private List<String> preferredNetworks = new ArrayList<>();
 
@@ -66,7 +73,7 @@ public class InetUtilsProperties {
 	}
 
 	public String getDefaultHostname() {
-		return defaultHostname;
+		return this.defaultHostname;
 	}
 
 	public void setDefaultHostname(String defaultHostname) {
@@ -74,7 +81,7 @@ public class InetUtilsProperties {
 	}
 
 	public String getDefaultIpAddress() {
-		return defaultIpAddress;
+		return this.defaultIpAddress;
 	}
 
 	public void setDefaultIpAddress(String defaultIpAddress) {
@@ -82,7 +89,7 @@ public class InetUtilsProperties {
 	}
 
 	public int getTimeoutSeconds() {
-		return timeoutSeconds;
+		return this.timeoutSeconds;
 	}
 
 	public void setTimeoutSeconds(int timeoutSeconds) {
@@ -90,7 +97,7 @@ public class InetUtilsProperties {
 	}
 
 	public List<String> getIgnoredInterfaces() {
-		return ignoredInterfaces;
+		return this.ignoredInterfaces;
 	}
 
 	public void setIgnoredInterfaces(List<String> ignoredInterfaces) {
@@ -98,7 +105,7 @@ public class InetUtilsProperties {
 	}
 
 	public boolean isUseOnlySiteLocalInterfaces() {
-		return useOnlySiteLocalInterfaces;
+		return this.useOnlySiteLocalInterfaces;
 	}
 
 	public void setUseOnlySiteLocalInterfaces(boolean useOnlySiteLocalInterfaces) {
@@ -106,10 +113,11 @@ public class InetUtilsProperties {
 	}
 
 	public List<String> getPreferredNetworks() {
-		return preferredNetworks;
+		return this.preferredNetworks;
 	}
 
 	public void setPreferredNetworks(List<String> preferredNetworks) {
 		this.preferredNetworks = preferredNetworks;
 	}
+
 }

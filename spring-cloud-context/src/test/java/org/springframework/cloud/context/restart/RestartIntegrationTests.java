@@ -1,11 +1,11 @@
 /*
- * Copyright 2006-2007 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,59 +25,57 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.LiveBeansView;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.BDDAssertions.then;
 
 public class RestartIntegrationTests {
 
 	private ConfigurableApplicationContext context;
 
+	public static void main(String[] args) {
+		SpringApplication.run(TestConfiguration.class, args);
+	}
+
 	@After
 	public void close() {
-		if (context != null) {
-			context.close();
+		if (this.context != null) {
+			this.context.close();
 		}
 	}
 
 	@Test
 	public void testRestartTwice() throws Exception {
 
-		context = SpringApplication.run(TestConfiguration.class,
-				"--management.endpoint.restart.enabled=true", "--server.port=0",
-				"--spring.liveBeansView.mbeanDomain=livebeans");
+		this.context = SpringApplication.run(TestConfiguration.class, "--management.endpoint.restart.enabled=true",
+				"--server.port=0", "--spring.config.use-legacy-processing=true",
+				"--management.endpoints.web.exposure.include=restart", "--spring.liveBeansView.mbeanDomain=livebeans");
 
-		RestartEndpoint endpoint = context.getBean(RestartEndpoint.class);
-		assertNotNull(context.getParent());
-		assertNull(context.getParent().getParent());
-		context = endpoint.doRestart();
+		RestartEndpoint endpoint = this.context.getBean(RestartEndpoint.class);
+		then(this.context.getParent()).isNotNull();
+		then(this.context.getParent().getParent()).isNull();
+		this.context = endpoint.doRestart();
 
-		assertNotNull(context);
-		assertNotNull(context.getParent());
-		assertNull(context.getParent().getParent());
+		then(this.context).isNotNull();
+		then(this.context.getParent()).isNotNull();
+		then(this.context.getParent().getParent()).isNull();
 
-		RestartEndpoint next = context.getBean(RestartEndpoint.class);
-		assertNotSame(endpoint, next);
-		context = next.doRestart();
+		RestartEndpoint next = this.context.getBean(RestartEndpoint.class);
+		then(next).isSameAs(endpoint);
+		this.context = next.doRestart();
 
-		assertNotNull(context);
-		assertNotNull(context.getParent());
-		assertNull(context.getParent().getParent());
+		then(this.context).isNotNull();
+		then(this.context.getParent()).isNotNull();
+		then(this.context.getParent().getParent()).isNull();
 
 		LiveBeansView beans = new LiveBeansView();
 		String json = beans.getSnapshotAsJson();
-		assertThat(json).containsOnlyOnce("parent\": \"bootstrap");
-		assertThat(json).containsOnlyOnce("parent\": null");
+		then(json).containsOnlyOnce("parent\": \"bootstrap");
+		then(json).containsOnlyOnce("parent\": null");
 	}
 
-	public static void main(String[] args) {
-		SpringApplication.run(TestConfiguration.class, args);
-	}
-
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableAutoConfiguration
 	protected static class TestConfiguration {
+
 	}
 
 }

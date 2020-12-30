@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xmlns="http://maven.apache.org/POM/4.0.0"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.springframework.cloud</groupId>
 	<artifactId>spring-cloud-commons-parent</artifactId>
-	<version>2.1.0.BUILD-SNAPSHOT</version>
+	<version>3.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>Spring Cloud Commons Parent</name>
 	<description>Spring Cloud Commons Parent</description>
@@ -11,20 +13,29 @@
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-build</artifactId>
-		<version>2.1.0.BUILD-SNAPSHOT</version>
+		<version>3.0.1-SNAPSHOT</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<scm>
 		<url>https://github.com/spring-cloud/spring-cloud-commons</url>
-		<connection>scm:git:git://github.com/spring-cloud/spring-cloud-commons.git</connection>
-		<developerConnection>scm:git:ssh://git@github.com/spring-cloud/spring-cloud-commons.git</developerConnection>
+		<connection>scm:git:git://github.com/spring-cloud/spring-cloud-commons.git
+		</connection>
+		<developerConnection>
+			scm:git:ssh://git@github.com/spring-cloud/spring-cloud-commons.git
+		</developerConnection>
 		<tag>HEAD</tag>
 	</scm>
 	<properties>
 		<bintray.package>commons</bintray.package>
+		<evictor.version>1.0.0</evictor.version>
+		<spring-security-oauth2-autoconfigure.version>2.1.2.RELEASE</spring-security-oauth2-autoconfigure.version>
 	</properties>
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>flatten-maven-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-eclipse-plugin</artifactId>
@@ -33,17 +44,39 @@
 					<additionalConfig>
 						<file>
 							<name>.settings/org.eclipse.jdt.ui.prefs</name>
-							<location>${maven.multiModuleProjectDirectory}/eclipse/org.eclipse.jdt.ui.prefs</location>
+							<location>
+								${maven.multiModuleProjectDirectory}/eclipse/org.eclipse.jdt.ui.prefs
+							</location>
 						</file>
 						<file>
 							<name>.settings/org.eclipse.jdt.core.prefs</name>
-							<location>${maven.multiModuleProjectDirectory}/eclipse/org.eclipse.jdt.core.prefs</location>
+							<location>
+								${maven.multiModuleProjectDirectory}/eclipse/org.eclipse.jdt.core.prefs
+							</location>
 						</file>
 					</additionalConfig>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>io.spring.javaformat</groupId>
+				<artifactId>spring-javaformat-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+			</plugin>
 		</plugins>
 	</build>
+
+	<reporting>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</reporting>
+
 	<profiles>
 		<profile>
 			<id>spring</id>
@@ -51,7 +84,7 @@
 				<repository>
 					<id>spring-snapshots</id>
 					<name>Spring Snapshots</name>
-					<url>https://repo.spring.io/libs-snapshot-local</url>
+					<url>https://repo.spring.io/snapshot</url>
 					<snapshots>
 						<enabled>true</enabled>
 					</snapshots>
@@ -77,7 +110,7 @@
 				<pluginRepository>
 					<id>spring-snapshots</id>
 					<name>Spring Snapshots</name>
-					<url>https://repo.spring.io/libs-snapshot-local</url>
+					<url>https://repo.spring.io/snapshot</url>
 					<snapshots>
 						<enabled>true</enabled>
 					</snapshots>
@@ -118,6 +151,11 @@
 				<artifactId>spring-cloud-test-support</artifactId>
 				<version>${project.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>org.springframework.security.oauth.boot</groupId>
+				<artifactId>spring-security-oauth2-autoconfigure</artifactId>
+				<version>${spring-security-oauth2-autoconfigure.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<modules>
@@ -125,8 +163,12 @@
 		<module>spring-cloud-test-support</module>
 		<module>spring-cloud-context</module>
 		<module>spring-cloud-context-integration-tests</module>
+		<module>spring-cloud-context-webflux-integration-tests</module>
 		<module>spring-cloud-commons</module>
+		<module>spring-cloud-loadbalancer</module>
 		<module>spring-cloud-starter</module>
+		<module>spring-cloud-starter-bootstrap</module>
+		<module>spring-cloud-starter-loadbalancer</module>
 		<module>docs</module>
 	</modules>
 </project>

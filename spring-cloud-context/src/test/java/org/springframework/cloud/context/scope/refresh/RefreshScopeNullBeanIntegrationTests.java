@@ -1,11 +1,11 @@
 /*
- * Copyright 2006-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.context.scope.refresh;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,10 +30,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.BDDAssertions.then;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = {RefreshScopeNullBeanIntegrationTests.TestConfiguration.class})
+@SpringBootTest(classes = { RefreshScopeNullBeanIntegrationTests.TestConfiguration.class })
 public class RefreshScopeNullBeanIntegrationTests {
 
 	@Autowired
@@ -43,13 +45,15 @@ public class RefreshScopeNullBeanIntegrationTests {
 	@Test
 	@DirtiesContext
 	public void testRefreshBean() {
-		assertThat(this.myCustomComponent.optionalService).isNotNull();
-		assertThat(this.scope).isNotNull();
+		then(this.myCustomComponent.optionalService).isNotNull();
+		then(this.scope).isNotNull();
 		// ...and then refresh, so the bean is re-initialized:
 		// this.scope.refreshAll();
 	}
 
-	protected static class OptionalService { }
+	protected static class OptionalService {
+
+	}
 
 	public static class MyCustomComponent {
 
@@ -58,9 +62,10 @@ public class RefreshScopeNullBeanIntegrationTests {
 		public MyCustomComponent(OptionalService optionalService) {
 			this.optionalService = optionalService;
 		}
+
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class OptionalConfiguration {
 
 		@Bean
@@ -68,9 +73,10 @@ public class RefreshScopeNullBeanIntegrationTests {
 		public OptionalService service() {
 			return null;
 		}
+
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@Import({ RefreshAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class, OptionalConfiguration.class })
 	protected static class TestConfiguration {
 
@@ -79,8 +85,9 @@ public class RefreshScopeNullBeanIntegrationTests {
 
 		@Bean
 		public MyCustomComponent myCustomComponent() {
-			return new MyCustomComponent(optionalService);
+			return new MyCustomComponent(this.optionalService);
 		}
+
 	}
 
 }

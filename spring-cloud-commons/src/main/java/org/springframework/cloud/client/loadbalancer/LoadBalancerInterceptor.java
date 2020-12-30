@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2017 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
 public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
 
 	private LoadBalancerClient loadBalancer;
+
 	private LoadBalancerRequestFactory requestFactory;
 
 	public LoadBalancerInterceptor(LoadBalancerClient loadBalancer, LoadBalancerRequestFactory requestFactory) {
@@ -52,6 +53,7 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
 		final URI originalUri = request.getURI();
 		String serviceName = originalUri.getHost();
 		Assert.state(serviceName != null, "Request URI does not contain a valid hostname: " + originalUri);
-		return this.loadBalancer.execute(serviceName, requestFactory.createRequest(request, body, execution));
+		return this.loadBalancer.execute(serviceName, this.requestFactory.createRequest(request, body, execution));
 	}
+
 }

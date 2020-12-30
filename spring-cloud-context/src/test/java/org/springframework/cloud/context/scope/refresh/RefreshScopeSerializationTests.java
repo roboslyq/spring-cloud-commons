@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertThat;
+import static org.assertj.core.api.BDDAssertions.then;
 
 /**
  * @author Dave Syer
@@ -38,29 +34,28 @@ public class RefreshScopeSerializationTests {
 
 	@Test
 	public void defaultApplicationContextId() throws Exception {
-		ConfigurableApplicationContext context = new SpringApplicationBuilder(
-				TestConfiguration.class).web(WebApplicationType.NONE).run();
-		assertThat(context.getId(), is(equalTo("application-1")));
+		ConfigurableApplicationContext context = new SpringApplicationBuilder(TestConfiguration.class)
+				.properties("spring.config.use-legacy-processing=true").web(WebApplicationType.NONE).run();
+		then(context.getId()).isEqualTo("application-1");
 	}
 
 	@Test
 	public void serializationIdReproducible() throws Exception {
 		String first = getBeanFactory().getSerializationId();
 		String second = getBeanFactory().getSerializationId();
-		assertThat(first, is(notNullValue()));
-		assertThat(first, is(not(equalTo("application"))));
-		assertThat(first, is(equalTo(second)));
+		then(first).isNotNull();
+		then(first).isNotEqualTo("application");
+		then(first).isEqualTo(second);
 	}
 
 	private DefaultListableBeanFactory getBeanFactory() {
-		ConfigurableApplicationContext context = new SpringApplicationBuilder(
-				TestConfiguration.class).web(WebApplicationType.NONE).run();
-		DefaultListableBeanFactory factory = (DefaultListableBeanFactory) context
-				.getAutowireCapableBeanFactory();
+		ConfigurableApplicationContext context = new SpringApplicationBuilder(TestConfiguration.class)
+				.web(WebApplicationType.NONE).run();
+		DefaultListableBeanFactory factory = (DefaultListableBeanFactory) context.getAutowireCapableBeanFactory();
 		return factory;
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	protected static class TestConfiguration {
 
 		@Bean
@@ -79,4 +74,5 @@ public class RefreshScopeSerializationTests {
 	protected static class TestBean {
 
 	}
+
 }

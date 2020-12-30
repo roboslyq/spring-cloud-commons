@@ -1,19 +1,35 @@
+/*
+ * Copyright 2012-2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.springframework.cloud.client.loadbalancer;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.AbstractClientHttpResponse;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.StreamUtils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
+import static org.assertj.core.api.BDDAssertions.then;
 
 /**
  * @author Ryan Baxter
@@ -24,14 +40,14 @@ public class ClientHttpResponseStatusCodeExceptionTest {
 	@Test
 	public void testCreation() throws Exception {
 		MyClientHttpResponse response = new MyClientHttpResponse();
-		assertFalse(response.isClosed());
-		ClientHttpResponseStatusCodeException exp = new ClientHttpResponseStatusCodeException("service",
-				response, response.getStatusText().getBytes());
+		then(response.isClosed()).isFalse();
+		ClientHttpResponseStatusCodeException exp = new ClientHttpResponseStatusCodeException("service", response,
+				response.getStatusText().getBytes());
 		ClientHttpResponse expResponse = exp.getResponse();
-		assertEquals(response.getRawStatusCode(), expResponse.getRawStatusCode());
-		assertEquals(response.getStatusText(), expResponse.getStatusText());
-		assertEquals(response.getHeaders(), expResponse.getHeaders());
-		assertEquals(response.getStatusText(), new String(StreamUtils.copyToByteArray(expResponse.getBody())));
+		then(expResponse.getRawStatusCode()).isEqualTo(response.getRawStatusCode());
+		then(expResponse.getStatusText()).isEqualTo(response.getStatusText());
+		then(expResponse.getHeaders()).isEqualTo(response.getHeaders());
+		then(new String(StreamUtils.copyToByteArray(expResponse.getBody()))).isEqualTo(response.getStatusText());
 	}
 
 	class MyClientHttpResponse extends AbstractClientHttpResponse {
@@ -54,7 +70,7 @@ public class ClientHttpResponseStatusCodeExceptionTest {
 		}
 
 		public boolean isClosed() {
-			return closed;
+			return this.closed;
 		}
 
 		@Override
@@ -68,5 +84,7 @@ public class ClientHttpResponseStatusCodeExceptionTest {
 			headers.add("foo", "bar");
 			return headers;
 		}
+
 	}
+
 }

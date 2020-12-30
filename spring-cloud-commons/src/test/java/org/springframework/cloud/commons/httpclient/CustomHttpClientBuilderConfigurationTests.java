@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2018 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.commons.httpclient;
 
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
@@ -27,7 +29,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.BDDAssertions.then;
 
 /**
  * @author Ryan Baxter
@@ -41,12 +43,13 @@ public class CustomHttpClientBuilderConfigurationTests {
 
 	@Test
 	public void testCustomBuilder() {
-		HttpClientBuilder builder = apacheHttpClientFactory.createBuilder();
-		assertTrue(CustomHttpClientBuilderApplication.MyHttpClientBuilder.class.isInstance(builder));
+		HttpClientBuilder builder = this.apacheHttpClientFactory.createBuilder();
+		then(CustomHttpClientBuilderApplication.MyHttpClientBuilder.class.isInstance(builder)).isTrue();
 	}
+
 }
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 @EnableAutoConfiguration
 class CustomHttpClientBuilderApplication {
 
@@ -54,8 +57,8 @@ class CustomHttpClientBuilderApplication {
 		SpringApplication.run(MyApplication.class, args);
 	}
 
-	@Configuration
-	@AutoConfigureBefore(value = HttpClientConfiguration.class)
+	@Configuration(proxyBeanMethods = false)
+	@AutoConfigureBefore(HttpClientConfiguration.class)
 	static class MyConfig {
 
 		@Bean
@@ -66,5 +69,7 @@ class CustomHttpClientBuilderApplication {
 	}
 
 	static class MyHttpClientBuilder extends HttpClientBuilder {
+
 	}
+
 }

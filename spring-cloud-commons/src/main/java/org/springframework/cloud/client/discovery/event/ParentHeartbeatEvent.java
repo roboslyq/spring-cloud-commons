@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,8 +19,8 @@ package org.springframework.cloud.client.discovery.event;
 import org.springframework.context.ApplicationEvent;
 
 /**
- * Heartbeat Event that a Parent ApplicationContext can send to a child Context. Useful,
- * for example, when config server is located via DiscoveryClient, in which case the
+ * Heartbeat event that a parent ApplicationContext can send to a child context. Useful,
+ * for example, when a config server is located via a DiscoveryClient, in which case the
  * {@link HeartbeatEvent} that triggers this event is fired in the parent (bootstrap)
  * context.
  *

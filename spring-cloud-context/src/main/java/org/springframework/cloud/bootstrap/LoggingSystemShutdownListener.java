@@ -1,11 +1,11 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,8 +33,10 @@ import org.springframework.util.ClassUtils;
 public class LoggingSystemShutdownListener
 		implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
 
-	public static final int DEFAULT_ORDER = BootstrapApplicationListener.DEFAULT_ORDER
-			+ 1;
+	/**
+	 * Default order for the listener.
+	 */
+	public static final int DEFAULT_ORDER = BootstrapApplicationListener.DEFAULT_ORDER + 1;
 
 	private int order = DEFAULT_ORDER;
 
@@ -44,19 +46,19 @@ public class LoggingSystemShutdownListener
 	}
 
 	private void shutdownLogging() {
-		LoggingSystem loggingSystem = LoggingSystem
-				.get(ClassUtils.getDefaultClassLoader());
+		// TODO: only enable if bootstrap and legacy
+		LoggingSystem loggingSystem = LoggingSystem.get(ClassUtils.getDefaultClassLoader());
 		loggingSystem.cleanUp();
 		loggingSystem.beforeInitialize();
-	}
-
-	public void setOrder(int order) {
-		this.order = order;
 	}
 
 	@Override
 	public int getOrder() {
 		return this.order;
+	}
+
+	public void setOrder(int order) {
+		this.order = order;
 	}
 
 }
