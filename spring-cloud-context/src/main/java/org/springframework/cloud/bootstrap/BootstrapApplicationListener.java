@@ -64,6 +64,7 @@ import static org.springframework.cloud.util.PropertyUtils.bootstrapEnabled;
 import static org.springframework.cloud.util.PropertyUtils.useLegacyProcessing;
 
 /**
+ *
  * A listener that prepares a SpringApplication (e.g. populating its Environment) by
  * delegating to {@link ApplicationContextInitializer} beans in a separate bootstrap
  * context. The bootstrap context is a SpringApplication created from sources defined in
@@ -111,6 +112,7 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 			}
 		}
 		if (context == null) {
+			// ===>核心方法: 配置spring cloud context的initializer
 			context = bootstrapServiceContext(environment, event.getSpringApplication(), configName);
 			event.getSpringApplication().addListeners(new CloseContextOnFailureApplicationListener(context));
 		}
@@ -269,6 +271,11 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 		}
 	}
 
+	/**
+	 * 将spring cloud context设置为spring boot context的父context
+	 * @param application
+	 * @param context
+	 */
 	private void addAncestorInitializer(SpringApplication application, ConfigurableApplicationContext context) {
 		boolean installed = false;
 		for (ApplicationContextInitializer<?> initializer : application.getInitializers()) {
@@ -285,16 +292,25 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 	}
 
 	@SuppressWarnings("unchecked")
+	/**
+	 * context : 当前spring cloud context
+	 * application：对应的spring boot application
+	 * environment: 对应的spring boot application的environment
+	 */
 	private void apply(ConfigurableApplicationContext context, SpringApplication application,
 			ConfigurableEnvironment environment) {
+		// 已经包含了bootstrap资源，直接返回，不需要再次加载
 		if (application.getAllSources().contains(BootstrapMarkerConfiguration.class)) {
 			return;
 		}
+		// 若没有包含，则创建bootstrap资源标识，防止多次重复加载
 		application.addPrimarySources(Arrays.asList(BootstrapMarkerConfiguration.class));
 		@SuppressWarnings("rawtypes")
+		// 将spring cloud中的ApplicationInitializer应用到spring boot application 中，并且对application的initializer进行排序
 		Set target = new LinkedHashSet<>(application.getInitializers());
 		target.addAll(getOrderedBeansOfType(context, ApplicationContextInitializer.class));
 		application.setInitializers(target);
+		// 初始化解密Initializer
 		addBootstrapDecryptInitializer(application);
 	}
 
