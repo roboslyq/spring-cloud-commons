@@ -22,7 +22,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
+ * 在 CommonsClientAutoConfiguration 中被构造
  * @author Spencer Gibb
+ *
  */
 public class HasFeatures {
 

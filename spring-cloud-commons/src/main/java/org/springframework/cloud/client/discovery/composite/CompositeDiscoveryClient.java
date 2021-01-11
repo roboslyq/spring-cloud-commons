@@ -28,7 +28,7 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 /**
  * A {@link DiscoveryClient} that is composed of other discovery clients and delegates
  * calls to each of them in order.
- *
+ * 组合服务服务：可以实现多注册心，比如nacos与consul同时注册
  * @author Biju Kunjummen
  * @author Olga Maciaszek-Sharma
  */
