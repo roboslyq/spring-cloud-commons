@@ -105,21 +105,32 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 			return;
 		}
 		ConfigurableApplicationContext context = null;
+		// 查看应用main context中配置(application.yml或者properties或者其它配置)中是否有指定spring.cloud.bootstrap.name属性，
+		// 即spring cloud 引导Context配置文件名。如果没有指定，则使用默认的bootstrap
 		String configName = environment.resolvePlaceholders("${spring.cloud.bootstrap.name:bootstrap}");
 		for (ApplicationContextInitializer<?> initializer : event.getSpringApplication().getInitializers()) {
 			if (initializer instanceof ParentContextApplicationContextInitializer) {
+				// 通过ParentContextApplicationContextInitializer来获取当前应用最顶层的parent Context
 				context = findBootstrapContext((ParentContextApplicationContextInitializer) initializer, configName);
 			}
 		}
+		// 如果当前Main Context为空，则初始化一个
 		if (context == null) {
-			// ===>核心方法: 配置spring cloud context的initializer
+			// ===>核心方法: 配置spring cloud context的initializer。
+			//      将 key org.springframework.cloud.bootstrap.BootstrapConfiguration 的所有value，加载并注册为 bean
 			context = bootstrapServiceContext(environment, event.getSpringApplication(), configName);
 			event.getSpringApplication().addListeners(new CloseContextOnFailureApplicationListener(context));
 		}
-
+		// 初始化spring Cloud Bootstrap Context
 		apply(context, event.getSpringApplication(), environment);
 	}
 
+	/**
+	 * 获取当前应用的最顶层的parent context
+	 * @param initializer
+	 * @param configName
+	 * @return
+	 */
 	private ConfigurableApplicationContext findBootstrapContext(ParentContextApplicationContextInitializer initializer,
 			String configName) {
 		Field field = ReflectionUtils.findField(ParentContextApplicationContextInitializer.class, "parent");
@@ -141,17 +152,28 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 		}
 	}
 
+	/**
+	 * 构建bootstrap Context
+	 * @param environment 当前应用main environment
+	 * @param application 当前应用main ApplicationContext
+	 * @param configName spring cloud的配置文件名称，默认是bootstrap
+	 * @return
+	 */
 	private ConfigurableApplicationContext bootstrapServiceContext(ConfigurableEnvironment environment,
 			final SpringApplication application, String configName) {
+		// 创建一个空的StandardEnvironment
 		StandardEnvironment bootstrapEnvironment = new StandardEnvironment();
 		MutablePropertySources bootstrapProperties = bootstrapEnvironment.getPropertySources();
+		// 清除StandardEnvironment中默认的所有配置
 		for (PropertySource<?> source : bootstrapProperties) {
 			bootstrapProperties.remove(source.getName());
 		}
+		// 获取bootstrap配置文件路径 ，可以通过参数spring.cloud.bootstrap.location指定
 		String configLocation = environment.resolvePlaceholders("${spring.cloud.bootstrap.location:}");
 		String configAdditionalLocation = environment
 				.resolvePlaceholders("${spring.cloud.bootstrap.additional-location:}");
 		Map<String, Object> bootstrapMap = new HashMap<>();
+		// 配置文件名称，默认是bootstrap
 		bootstrapMap.put("spring.config.name", configName);
 		// if an app (or test) uses spring.main.web-application-type=reactive, bootstrap
 		// will fail
@@ -195,6 +217,7 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 			// way to switch those off.
 			builderApplication.setListeners(filterListeners(builderApplication.getListeners()));
 		}
+		//将 key org.springframework.cloud.bootstrap.BootstrapConfiguration 的所有value，加载并注册为 bean
 		builder.sources(BootstrapImportSelectorConfiguration.class);
 		final ConfigurableApplicationContext context = builder.run();
 		// gh-214 using spring.application.name=bootstrap to set the context id via
@@ -207,6 +230,7 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 		// It only has properties in it now that we don't want in the parent so remove
 		// it (and it will be added back later)
 		bootstrapProperties.remove(BOOTSTRAP_PROPERTY_SOURCE_NAME);
+		// Application Context Hierarchies: 子容器继承父容器的属性源 和 profiles
 		mergeDefaultProperties(environment.getPropertySources(), bootstrapProperties);
 		return context;
 	}
@@ -272,7 +296,8 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 	}
 
 	/**
-	 * 将spring cloud context设置为spring boot context的父context
+	 * ====>核心方法：添加AncestorInitializer，在application初始化过程中，会调用AncestorInitializer将spring cloud context设置为spring boot context的父context
+	 * 此处仅仅是添加initializer,未调用真正的.setParent方法
 	 * @param application
 	 * @param context
 	 */
@@ -291,12 +316,12 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 
 	}
 
-	@SuppressWarnings("unchecked")
 	/**
 	 * context : 当前spring cloud context
 	 * application：对应的spring boot application
 	 * environment: 对应的spring boot application的environment
 	 */
+	@SuppressWarnings("unchecked")
 	private void apply(ConfigurableApplicationContext context, SpringApplication application,
 			ConfigurableEnvironment environment) {
 		// 已经包含了bootstrap资源，直接返回，不需要再次加载
@@ -313,7 +338,9 @@ public class BootstrapApplicationListener implements ApplicationListener<Applica
 		// 初始化解密Initializer
 		addBootstrapDecryptInitializer(application);
 	}
-
+	/**
+	 * 添加解码intitializer
+	 */
 	@SuppressWarnings("unchecked")
 	private void addBootstrapDecryptInitializer(SpringApplication application) {
 		DelegatingEnvironmentDecryptApplicationInitializer decrypter = null;

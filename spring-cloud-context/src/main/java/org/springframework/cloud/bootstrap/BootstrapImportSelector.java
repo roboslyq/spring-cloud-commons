@@ -43,7 +43,7 @@ import org.springframework.util.StringUtils;
  * sorted using {@link AnnotationAwareOrderComparator#sort(List)}. This class is a
  * {@link DeferredImportSelector} so {@code @Conditional} annotations on imported classes
  * are supported.
- *
+ * 调用流程： spring.fatories-> BootstrapApplicationListener-> BootstrapImportSelectorConfiguration -> BootstrapImportSelector
  * @author Spencer Gibb
  */
 public class BootstrapImportSelector implements EnvironmentAware, DeferredImportSelector {
